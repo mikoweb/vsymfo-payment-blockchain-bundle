@@ -72,13 +72,13 @@ class CallbackResponse
      */
     public function __construct(Request $request)
     {
-        $this->secretParameter = $request->request->get("secret");
-        $this->value = $request->request->get("value");
-        $this->inputAddress = $request->request->get("input_address");
-        $this->confirmations = $request->request->get("confirmations");
-        $this->transactionHash = $request->request->get("transaction_hash");
-        $this->inputTransactionHash = $request->request->get("input_transaction_hash");
-        $this->destinationAddress = $request->request->get("destination_address");
+        $this->secretParameter = $request->get("secret");
+        $this->value = $request->get("value");
+        $this->inputAddress = $request->get("input_address");
+        $this->confirmations = $request->get("confirmations");
+        $this->transactionHash = $request->get("transaction_hash");
+        $this->inputTransactionHash = $request->get("input_transaction_hash");
+        $this->destinationAddress = $request->get("destination_address");
     }
 
     /**
