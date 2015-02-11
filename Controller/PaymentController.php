@@ -1,0 +1,72 @@
+<?php
+
+/*
+ * This file is part of the vSymfo package.
+ *
+ * website: www.vision-web.pl
+ * (c) Rafał Mikołajun <rafal@vision-web.pl>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace vSymfo\Payment\BlockchainBundle\Controller;
+
+use JMS\Payment\CoreBundle\Entity\PaymentInstruction;
+use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use vSymfo\Payment\BlockchainBundle\Client\CallbackResponse;
+
+/**
+ * Kontroler płatności
+ * @author Rafał Mikołajun <rafal@vision-web.pl>
+ * @package vSymfoPaymentBlockchainBundle
+ */
+class PaymentController extends Controller
+{
+    /**
+     * Zatwierdzanie płatności
+     * @param Request $request
+     * @param PaymentInstruction $instruction
+     * @return Response
+     * @throws \Exception
+     */
+    public function callbackAction(Request $request, PaymentInstruction $instruction)
+    {
+        if (null === $transaction = $instruction->getPendingTransaction()) {
+            throw new \RuntimeException('No pending transaction found for the payment instruction');
+        }
+
+        $client = $this->get('payment.blockchain.client');
+        $response = new CallbackResponse($request);
+        $extendedData = $transaction->getExtendedData();
+
+        if ($client->getSecretParameter() !== $response->getSecretParameter()) {
+            throw new \Exception("Invalid secret parameter", 1);
+        }
+
+        if ($client->getReceivingAddress() !== $response->getDestinationAddress()) {
+            throw new \Exception("Invalid sestination address", 2);
+        }
+
+        $em = $this->getDoctrine()->getManager();
+        $extendedData->set("value", $response->getValue());
+        $extendedData->set("input_address", $response->getInputAddress());
+        $extendedData->set("confirmations", $response->getConfirmations());
+        $extendedData->set("transaction_hash", $response->getTransactionHash());
+        $extendedData->set("input_transaction_hash", $response->getInputTransactionHash());
+        $extendedData->set("destination_address", $response->getDestinationAddress());
+        $em->persist($transaction);
+
+        $payment = $transaction->getPayment();
+        $result = $this->get('payment.plugin_controller')->approveAndDeposit($payment->getId(), (float)$response->getValue());
+        if (is_object($ex = $result->getPluginException())) {
+            throw $ex;
+        }
+
+        $em->flush();
+
+        return new Response('*ok*');
+    }
+}

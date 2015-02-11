@@ -1,0 +1,5 @@
+vsymfo_payment_blockchain_callback:
+    pattern: /transaction/{id}/callback
+    defaults: { _controller: vSymfoPaymentBlockchainBundle:Payment:callback }
+    requirements:
+        id: \d+

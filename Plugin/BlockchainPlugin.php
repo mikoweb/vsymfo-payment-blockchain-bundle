@@ -94,12 +94,26 @@ class BlockchainPlugin extends AbstractPlugin
     /**
      * @param FinancialTransactionInterface $transaction
      * @return ActionRequiredException
+     * @throws FinancialException
      */
     public function createPaymentRedirect(FinancialTransactionInterface $transaction)
     {
         $actionRequest = new ActionRequiredException('Redirecting to payment.');
         $actionRequest->setFinancialTransaction($transaction);
         $instruction = $transaction->getPayment()->getPaymentInstruction();
+
+        if ($instruction->getCurrency() != "BTC") {
+            $e = new FinancialException("Transaction currency is not BTC");
+            $e->setFinancialTransaction($transaction);
+            throw $e;
+        }
+
+        $data = $transaction->getExtendedData();
+        $response = $this->client->generatePayment($this->router->generate('vsymfo_payment_blockchain_callback', array(
+            "id" => $instruction->getId()
+        )));
+
+        $data->set("generated_input_address", $response->getInputAddress());
 
         $actionRequest->setAction(new VisitUrl($this->router->generate('vsymfo_payment_blockchain_redirect', array(
             "id" => $instruction->getId()
@@ -117,7 +131,9 @@ class BlockchainPlugin extends AbstractPlugin
      */
     protected function checkExtendedDataBeforeApproveAndDeposit(ExtendedDataInterface $data)
     {
-
+        if (!$data->has('confirmations') || !$data->has('value') || !$data->has('input_address') || !$data->has('destination_address') || !$data->has('transaction_hash')) {
+            throw new BlockedException("Awaiting extended data from Blockchain.info.");
+        }
     }
 
     /**
@@ -125,7 +141,21 @@ class BlockchainPlugin extends AbstractPlugin
      */
     public function approve(FinancialTransactionInterface $transaction, $retry)
     {
+        $data = $transaction->getExtendedData();
+        $this->checkExtendedDataBeforeApproveAndDeposit($data);
 
+        if ((int)$data->get('confirmations') == 1) {
+            $transaction->setReferenceNumber($data->get('transaction_hash'));
+            $transaction->setProcessedAmount($data->get('value'));
+            $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);
+            $transaction->setReasonCode(PluginInterface::REASON_CODE_SUCCESS);
+        } else {
+            $e = new FinancialException('Payment status unknow: ' . $data->get('confirmations'));
+            $e->setFinancialTransaction($transaction);
+            $transaction->setResponseCode('Unknown');
+            $transaction->setReasonCode($data->get('confirmations'));
+            throw $e;
+        }
     }
 
     /**
@@ -133,6 +163,32 @@ class BlockchainPlugin extends AbstractPlugin
      */
     public function deposit(FinancialTransactionInterface $transaction, $retry)
     {
+        $data = $transaction->getExtendedData();
 
+        if ($transaction->getResponseCode() !== PluginInterface::RESPONSE_CODE_SUCCESS
+            || $transaction->getReasonCode() !== PluginInterface::REASON_CODE_SUCCESS
+        ) {
+            $e = new FinancialException('Peyment is not completed');
+            $e->setFinancialTransaction($transaction);
+            throw $e;
+        }
+
+        // różnica kwoty zatwierdzonej i kwoty wymaganej musi być równa zero
+        // && nazwa waluty musi się zgadzać
+        if (Number::compare($transaction->getProcessedAmount(), $transaction->getRequestedAmount()) === 0
+            && $transaction->getPayment()->getPaymentInstruction()->getCurrency() == "BTC"
+        ) {
+            // wszystko ok
+            // można zakakceptować zamówienie
+            $event = new PaymentEvent($this->getName(), $transaction, $transaction->getPayment()->getPaymentInstruction());
+            $this->dispatcher->dispatch('deposit', $event);
+        } else {
+            // coś się nie zgadza, nie można tego zakaceptować
+            $e = new FinancialException('The deposit has not passed validation');
+            $e->setFinancialTransaction($transaction);
+            $transaction->setResponseCode('Unknown');
+            $transaction->setReasonCode($data->get('confirmations'));
+            throw $e;
+        }
     }
 }
