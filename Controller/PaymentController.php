@@ -51,7 +51,7 @@ class PaymentController extends Controller
         }
 
         if ($extendedData->get("generated_input_address") !== $response->getInputAddress()) {
-            throw new \Exception("Invalid input address", 2);
+            throw new \Exception("Invalid input address", 3);
         }
 
         $em = $this->getDoctrine()->getManager();
