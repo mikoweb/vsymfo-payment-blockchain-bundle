@@ -54,28 +54,28 @@ class PaymentController extends Controller
             throw new \Exception("Invalid input address", 3);
         }
 
-        if ((int)$response->getConfirmations() < 6) {
-            throw new \Exception("Not enough confirmations.", 4);
+        if ((int)$response->getConfirmations() >= 6) {
+            $amount = (float)$response->getValue() / 100000000; // The value of the payment received in satoshi. Divide by 100000000 to get the value in BTC.
+            $em = $this->getDoctrine()->getManager();
+            $extendedData->set("value", $amount);
+            $extendedData->set("input_address", $response->getInputAddress());
+            $extendedData->set("confirmations", $response->getConfirmations());
+            $extendedData->set("transaction_hash", $response->getTransactionHash());
+            $extendedData->set("input_transaction_hash", $response->getInputTransactionHash());
+            $extendedData->set("destination_address", $response->getDestinationAddress());
+            $em->persist($transaction);
+
+            $payment = $transaction->getPayment();
+            $result = $this->get('payment.plugin_controller')->approveAndDeposit($payment->getId(), $amount);
+            if (is_object($ex = $result->getPluginException())) {
+                throw $ex;
+            }
+
+            $em->flush();
+
+            return new Response('*ok*');
+        } else {
+            return new Response('not enough confirmations');
         }
-
-        $amount = (float)$response->getValue() / 100000000; // The value of the payment received in satoshi. Divide by 100000000 to get the value in BTC.
-        $em = $this->getDoctrine()->getManager();
-        $extendedData->set("value", $amount);
-        $extendedData->set("input_address", $response->getInputAddress());
-        $extendedData->set("confirmations", $response->getConfirmations());
-        $extendedData->set("transaction_hash", $response->getTransactionHash());
-        $extendedData->set("input_transaction_hash", $response->getInputTransactionHash());
-        $extendedData->set("destination_address", $response->getDestinationAddress());
-        $em->persist($transaction);
-
-        $payment = $transaction->getPayment();
-        $result = $this->get('payment.plugin_controller')->approveAndDeposit($payment->getId(), $amount);
-        if (is_object($ex = $result->getPluginException())) {
-            throw $ex;
-        }
-
-        $em->flush();
-
-        return new Response('*ok*');
     }
 }
