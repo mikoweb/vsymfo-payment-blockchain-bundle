@@ -144,7 +144,7 @@ class BlockchainPlugin extends AbstractPlugin
         $data = $transaction->getExtendedData();
         $this->checkExtendedDataBeforeApproveAndDeposit($data);
 
-        if ((int)$data->get('confirmations') == 1) {
+        if ((int)$data->get('confirmations') >= 6) {
             $transaction->setReferenceNumber($data->get('transaction_hash'));
             $transaction->setProcessedAmount($data->get('value'));
             $transaction->setResponseCode(PluginInterface::RESPONSE_CODE_SUCCESS);

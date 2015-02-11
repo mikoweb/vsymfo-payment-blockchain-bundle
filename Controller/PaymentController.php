@@ -54,6 +54,10 @@ class PaymentController extends Controller
             throw new \Exception("Invalid input address", 3);
         }
 
+        if ((int)$response->getConfirmations() < 6) {
+            throw new \Exception("Not enough confirmations.", 4);
+        }
+
         $em = $this->getDoctrine()->getManager();
         $extendedData->set("value", $response->getValue());
         $extendedData->set("input_address", $response->getInputAddress());
