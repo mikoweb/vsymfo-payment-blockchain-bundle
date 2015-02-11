@@ -111,7 +111,7 @@ class BlockchainPlugin extends AbstractPlugin
         $data = $transaction->getExtendedData();
         $response = $this->client->generatePayment($this->router->generate('vsymfo_payment_blockchain_callback', array(
             "id" => $instruction->getId()
-        )));
+        ), true));
 
         $data->set("generated_input_address", $response->getInputAddress());
 
