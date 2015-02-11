@@ -1,0 +1,15 @@
+services:
+    payment.blockchain.client:
+        class: vSymfo\Payment\BlockchainBundle\Client\BlockchainClient
+        arguments: [%vsymfo_payment_blockchain.receiving_address%, %vsymfo_payment_blockchain.secret_parameter%]
+
+    payment.plugin.blockchain:
+        class: vSymfo\Payment\BlockchainBundle\Plugin\BlockchainPlugin
+        arguments: [@router, @payment.blockchain.client, @payment.event_dispatcher]
+        tags: [{name: payment.plugin}]
+
+    payment.form.blockchain_type:
+        class: vSymfo\Payment\BlockchainBundle\Form\BlockchainType
+        tags:
+            - {name: payment.method_form_type}
+            - {name: form.type, alias: blockchain_payment}

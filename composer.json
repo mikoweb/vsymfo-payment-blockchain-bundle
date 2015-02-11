@@ -1,0 +1,26 @@
+{
+    "name": "mikoweb/vsymfo-payment-blockchain-bundle",
+    "type": "symfony-bundle",
+    "description": "Bitcoin payments bundle.",
+    "keywords": ["payment", "vsymfo", "bitcoin", "blockchain"],
+    "homepage": "http://vision-web.pl",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Rafał Mikołajun",
+            "email": "rafal@vision-web.pl",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "mikoweb/vsymfo-payments": "dev-master",
+        "mikoweb/vsymfo-core": "dev-master"
+    },
+    "autoload": {
+        "psr-0": { "vSymfo\\Payment\\BlockchainBundle\\": "" }
+    },
+    "target-dir": "vSymfo/Payment/BlockchainBundle",
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
