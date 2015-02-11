@@ -58,8 +58,9 @@ class PaymentController extends Controller
             throw new \Exception("Not enough confirmations.", 4);
         }
 
+        $amount = (float)$response->getValue() / 100000000; // The value of the payment received in satoshi. Divide by 100000000 to get the value in BTC.
         $em = $this->getDoctrine()->getManager();
-        $extendedData->set("value", $response->getValue());
+        $extendedData->set("value", $amount);
         $extendedData->set("input_address", $response->getInputAddress());
         $extendedData->set("confirmations", $response->getConfirmations());
         $extendedData->set("transaction_hash", $response->getTransactionHash());
@@ -68,7 +69,7 @@ class PaymentController extends Controller
         $em->persist($transaction);
 
         $payment = $transaction->getPayment();
-        $result = $this->get('payment.plugin_controller')->approveAndDeposit($payment->getId(), (float)$response->getValue());
+        $result = $this->get('payment.plugin_controller')->approveAndDeposit($payment->getId(), $amount);
         if (is_object($ex = $result->getPluginException())) {
             throw $ex;
         }
